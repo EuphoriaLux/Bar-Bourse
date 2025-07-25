@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bar Bourse - Live Prices</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍻</text></svg>">
+    
+    <!-- STEP 1: ADD BABEL STANDALONE SCRIPT -->
+    <!-- This script will translate JSX into plain JavaScript in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+      }
+    }
+    </script>
+  </head>
+  <body class="fullscreen-body">
+    <div id="root"></div>
+    
+    <!-- STEP 2: CHANGE THE SCRIPT TYPE TO "text/babel" -->
+    <!-- This tells the Babel script to find and translate this file -->
+    <script type="text/babel" data-type="module" src="{{ url_for('static', filename='js/index.js') }}"></script>
+    
+  </body>
+</html>
