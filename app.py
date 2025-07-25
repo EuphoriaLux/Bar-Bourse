@@ -44,6 +44,10 @@ def decrease_prices():
             # Update price and the last_change value
             cursor.execute("UPDATE products SET current_price = ?, last_change = ? WHERE id = ?", 
                            (round(new_price, 2), round(change_value, 2), product['id']))
+            
+            # Also add the new price to the history
+            cursor.execute("INSERT INTO price_history (product_id, price) VALUES (?, ?)", 
+                           (product['id'], round(new_price, 2)))
         
         db.commit()
         print(f"Prices decreased. Change set to {change_value}.")
@@ -77,6 +81,10 @@ def record_order():
     # Update price and the last_change value
     cursor.execute("UPDATE products SET current_price = ?, last_change = ? WHERE id = ?", 
                    (round(new_price, 2), round(PRICE_INCREASE_ON_ORDER, 2), product_id))
+
+    # Also add the new price to the history
+    cursor.execute("INSERT INTO price_history (product_id, price) VALUES (?, ?)", 
+                   (product_id, round(new_price, 2)))
     
     # Track order count for popular drinks
     cursor.execute("""
@@ -103,6 +111,51 @@ def get_popular_drinks():
     
     popular = {row['product_id']: row['order_count'] for row in cursor.fetchall()}
     return jsonify(popular)
+
+@app.route('/api/next_drop_time')
+def get_next_drop_time():
+    next_run = scheduler.get_jobs()[0].next_run_time
+    return jsonify({'next_drop_time': next_run.isoformat()})
+
+@app.route('/api/price_history/<category_name>')
+def get_price_history(category_name):
+    db = get_db()
+    cursor = db.cursor()
+    
+    # This query calculates the average price for a category at each timestamp 
+    # where at least one price in that category changed.
+    cursor.execute("""
+        WITH CategoryProducts AS (
+            -- Select all products belonging to the target category
+            SELECT id FROM products WHERE category = ?
+        ),
+        RelevantTimestamps AS (
+            -- Get all distinct timestamps when a price for this category changed
+            SELECT DISTINCT timestamp
+            FROM price_history
+            WHERE product_id IN (SELECT id FROM CategoryProducts)
+        )
+        -- For each relevant timestamp, find the most recent price for EACH product
+        -- in the category and then calculate the average of these prices.
+        SELECT
+            t.timestamp,
+            AVG(
+                (
+                    SELECT ph.price
+                    FROM price_history ph
+                    WHERE ph.product_id = cp.id
+                      AND ph.timestamp <= t.timestamp
+                    ORDER BY ph.timestamp DESC
+                    LIMIT 1
+                )
+            ) as price
+        FROM RelevantTimestamps t, CategoryProducts cp
+        GROUP BY t.timestamp
+        ORDER BY t.timestamp
+    """, (category_name,))
+    
+    history = cursor.fetchall()
+    return jsonify([dict(row) for row in history])
 
 @app.route('/')
 def index():

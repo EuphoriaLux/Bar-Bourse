@@ -132,6 +132,13 @@ html,
   color: var(--text-color); /* Ensure good contrast */
 }
 
+.countdown-timer {
+    font-size: 1rem;
+    text-align: right;
+    opacity: 0.9;
+    color: var(--text-color);
+}
+
 .price-board-dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Default for smaller screens */
@@ -190,7 +197,7 @@ html,
   border-bottom: 2px solid var(--border-color); 
   padding-bottom: 0.75rem; 
   margin-top: 0; 
-  margin-bottom: 1rem; 
+  margin-bottom: 0.5rem; /* Reduced margin */
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -211,6 +218,18 @@ html,
   animation: slide-in 0.5s ease-out;
   overflow: hidden; /* Explicitly hide overflow to prevent scrollbars */
   padding-right: 0; /* Remove padding that was for scrollbar */
+}
+
+.chart-container {
+    height: 150px; /* Increased height */
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.widget-panel:hover .chart-container {
+    opacity: 1;
 }
 
 .drink-row { 

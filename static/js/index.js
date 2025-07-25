@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 
-const DATA_REFRESH_INTERVAL_MS = 3000;
+const DATA_REFRESH_INTERVAL_MS = 2000; // Update every 2 seconds
+const PRICE_DECREASE_INTERVAL_MINUTES = 2;
 
 // --- Custom Hook to track previous state (for animations) ---
 function usePrevious(value) {
@@ -61,6 +62,107 @@ const DrinkRow = ({ drink, prevDrink, isPopular }) => {
     );
 };
 
+const PriceChart = ({ categoryName }) => {
+    const chartRef = useRef(null);
+    const chartInstance = useRef(null);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const response = await fetch(`/api/price_history/${categoryName}`);
+                const data = await response.json();
+                
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                    
+                    const isTrendingUp = data.length > 1 && data[data.length - 1].price > data[0].price;
+                    const borderColor = isTrendingUp ? '#ff6b6b' : '#6affb0';
+                    const backgroundColor = isTrendingUp ? 'rgba(255, 107, 107, 0.1)' : 'rgba(106, 255, 176, 0.1)';
+
+                    const chartData = {
+                        labels: data.map(d => d.timestamp),
+                        datasets: [{
+                            label: 'Price Level',
+                            data: data.map(d => d.price),
+                            borderColor: borderColor,
+                            backgroundColor: backgroundColor,
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            fill: true
+                        }]
+                    };
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line',
+                        data: chartData,
+                        options: {
+                            animation: false,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: {
+                                        unit: 'minute',
+                                        displayFormats: {
+                                            minute: 'h:mm a'
+                                        }
+                                    },
+                                    ticks: {
+                                        color: '#9ca3af',
+                                        maxRotation: 0,
+                                        autoSkip: true,
+                                        maxTicksLimit: 5
+                                    },
+                                    grid: {
+                                        display: false
+                                    }
+                                },
+                                y: {
+                                    ticks: {
+                                        color: '#9ca3af',
+                                        callback: (value) => `${value.toFixed(1)}€`
+                                    },
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.05)'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Failed to fetch price history for ${categoryName}:`, error);
+            }
+        };
+
+        fetchHistory();
+        const intervalId = setInterval(fetchHistory, DATA_REFRESH_INTERVAL_MS); // Refresh chart at the same rate as prices
+
+        return () => {
+            clearInterval(intervalId);
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [categoryName]);
+
+    return (
+        <div className="chart-container">
+            <canvas ref={chartRef}></canvas>
+        </div>
+    );
+};
+
 const DrinkCategory = ({ title, drinks, prevDrinksMap, orderCounts }) => {
     const categoryClass = `category-${title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
     
@@ -70,6 +172,7 @@ const DrinkCategory = ({ title, drinks, prevDrinksMap, orderCounts }) => {
                 <span className="category-icon"></span>
                 {title}
             </h2>
+            <PriceChart categoryName={title} />
             <div className="drink-list">
                 {drinks.map(drink => (
                     <DrinkRow 
@@ -95,6 +198,51 @@ const HowItWorksWidget = () => (
     </div>
 );
 
+const CountdownTimer = () => {
+    const [timeLeft, setTimeLeft] = useState(null);
+
+    const fetchNextDropTime = useCallback(async () => {
+        try {
+            const response = await fetch('/api/next_drop_time');
+            const data = await response.json();
+            const nextDrop = new Date(data.next_drop_time);
+            const now = new Date();
+            setTimeLeft(Math.max(0, Math.floor((nextDrop - now) / 1000)));
+        } catch (error) {
+            console.error("Failed to fetch next drop time:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchNextDropTime(); // Fetch initial time
+        const intervalId = setInterval(() => {
+            setTimeLeft(prevTime => {
+                if (prevTime === null || prevTime <= 1) {
+                    fetchNextDropTime(); // Refetch when timer hits 0
+                    return null;
+                }
+                return prevTime - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [fetchNextDropTime]);
+
+    if (timeLeft === null) {
+        return <div className="countdown-timer"><span>NEXT DROP IN</span><div>--:--</div></div>;
+    }
+
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+
+    return (
+        <div className="countdown-timer">
+            <span>NEXT DROP IN</span>
+            <div>{`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`}</div>
+        </div>
+    );
+};
+
 const BoardHeader = ({ lastUpdated }) => (
     <header className="board-header">
         <h1>BAR BOURSE</h1>
@@ -107,6 +255,7 @@ const BoardHeader = ({ lastUpdated }) => (
                 <span>LAST UPDATED</span>
                 <div>{lastUpdated.toLocaleTimeString()}</div>
             </div>
+            <CountdownTimer />
         </div>
     </header>
 );

@@ -75,7 +75,17 @@ def setup_database():
         FOREIGN KEY (product_id) REFERENCES products (id)
     )
     ''')
-    print("Tables 'products' and 'order_history' created successfully.")
+
+    cursor.execute('''
+    CREATE TABLE price_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        price REAL NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products (id)
+    )
+    ''')
+    print("Tables 'products', 'order_history', and 'price_history' created successfully.")
 
     for drink in SAMPLE_DRINKS:
         name, category, color, base, min_p, max_p = drink
@@ -83,6 +93,14 @@ def setup_database():
         INSERT INTO products (name, category, highlight_color, base_price, current_price, min_price, max_price) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (name, category, color, base, base, min_p, max_p))
+        
+        product_id = cursor.lastrowid
+        
+        # Also add the initial price to the history
+        cursor.execute('''
+        INSERT INTO price_history (product_id, price)
+        VALUES (?, ?)
+        ''', (product_id, base))
 
     conn.commit()
     print(f"Database populated with {len(SAMPLE_DRINKS)} drinks.")
