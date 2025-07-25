@@ -397,6 +397,26 @@ html,
 .status-message.success { color: var(--price-down-color); }
 .status-message.error { color: var(--price-up-color); }
 
+.admin-category {
+  margin-bottom: 2rem;
+}
+
+.admin-category h3 {
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid #ff6b6b;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin: 1rem;
+}
+
 /* --- Trend Indicators --- */
 .trend-indicator {
   display: inline-flex;

@@ -311,28 +311,63 @@ const PublicDisplay = ({ drinks, lastUpdated }) => {
 };
 
 const AdminInterface = ({ drinks }) => {
-    /* This component is unchanged and remains for backend use */
-    const [status, setStatus] = useState({message: '', type: ''});
+    const [status, setStatus] = useState({ message: '', type: '' });
+
     const placeOrder = async (productId, productName) => {
-      setStatus({message: `Ordering ${productName}...`, type: ''});
-      try {
-          const response = await fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) });
-          const result = await response.json();
-          if (response.ok && result.success) {
-              setStatus({message: `${productName} ordered! New price: €${result.new_price.toFixed(2)}`, type: 'success'});
-          } else { setStatus({message: `Error: ${result.error || 'Unknown error'}`, type: 'error'}); }
-      } catch (error) { setStatus({message: 'Network error. Could not place order.', type: 'error'}); }
-      setTimeout(() => setStatus({message: '', type: ''}), 3000);
+        setStatus({ message: `Ordering ${productName}...`, type: '' });
+        try {
+            const response = await fetch('/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const result = await response.json();
+            if (response.ok && result.success) {
+                setStatus({ message: `${productName} ordered! New price: €${result.new_price.toFixed(2)}`, type: 'success' });
+            } else {
+                setStatus({ message: `Error: ${result.error || 'Unknown error'}`, type: 'error' });
+            }
+        } catch (error) {
+            setStatus({ message: 'Network error. Could not place order.', type: 'error' });
+        }
+        setTimeout(() => setStatus({ message: '', type: '' }), 3000);
     };
-    const sortedDrinks = [...drinks].sort((a,b) => a.name.localeCompare(b.name));
+
+    const groupedDrinks = drinks.reduce((acc, drink) => {
+        const category = drink.category || 'Uncategorized';
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push(drink);
+        return acc;
+    }, {});
+
+    const categoryOrder = ['Alcool 4cl', 'Supérieur 4cl', 'Bière 50cl', 'Bière Bouteille', 'Vin 12cl', 'Shooter 3cl', 'Sans Alcool 33cl'];
+    const sortedCategories = Object.keys(groupedDrinks).sort((a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b));
+
     return (
-      <div className="admin-panel">
-        <h2>Record an Order</h2>
-        <div className="order-grid">
-          {sortedDrinks.map(product => (<button className="order-btn" key={product.id} onClick={() => placeOrder(product.id, product.name)}>{product.name}</button>))}
+        <div className="admin-panel">
+            <h2>Record an Order</h2>
+            {sortedCategories.map(categoryName => (
+                <div key={categoryName} className="admin-category">
+                    <h3>{categoryName}</h3>
+                    <div className="order-grid">
+                        {groupedDrinks[categoryName]
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map(product => (
+                                <button
+                                    className="order-btn"
+                                    key={product.id}
+                                    onClick={() => placeOrder(product.id, product.name)}
+                                >
+                                    {product.name}
+                                </button>
+                            ))}
+                    </div>
+                </div>
+            ))}
+            <div className={`status-message ${status.type}`}>{status.message}</div>
         </div>
-         <div className={`status-message ${status.type}`}>{status.message}</div>
-      </div>
     );
 };
 
@@ -341,14 +376,22 @@ const App = () => {
     const [drinks, setDrinks] = useState([]);
     const [route, setRoute] = useState(window.location.hash || '#/');
     const [lastUpdated, setLastUpdated] = useState(new Date());
+    const [error, setError] = useState(null);
 
     const fetchPrices = useCallback(async () => {
         try {
             const response = await fetch('/api/prices');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             setDrinks(data);
             setLastUpdated(new Date()); // Update the clock on successful fetch
-        } catch (error) { console.error("Failed to fetch prices:", error); }
+            setError(null); // Clear any previous errors
+        } catch (error) {
+            console.error("Failed to fetch prices:", error);
+            setError("Could not connect to the server. Please try again later.");
+        }
     }, []);
 
     useEffect(() => {
@@ -384,7 +427,7 @@ const App = () => {
                 </nav>
             )}
             <main>
-                {renderRoute()}
+                {error ? <div className="error-message">{error}</div> : renderRoute()}
             </main>
         </div>
     );

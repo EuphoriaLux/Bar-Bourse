@@ -3,11 +3,9 @@ import sqlite3
 from flask import Flask, render_template, jsonify, request, g
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
+from config import PRICE_DECREASE_AMOUNT, PRICE_DECREASE_INTERVAL_MINUTES, PRICE_INCREASE_ON_ORDER
 
 DATABASE = 'drinks.db'
-PRICE_INCREASE_ON_ORDER = 0.50
-PRICE_DECREASE_INTERVAL_MINUTES = 2
-PRICE_DECREASE_AMOUNT = 0.10
 
 app = Flask(__name__)
 
