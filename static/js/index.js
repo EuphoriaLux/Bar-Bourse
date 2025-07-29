@@ -179,7 +179,7 @@ const DrinkCategory = ({ title, drinks, prevDrinksMap, orderCounts }) => {
                         key={drink.id} 
                         drink={drink} 
                         prevDrink={prevDrinksMap.get(drink.id)} 
-                        isPopular={orderCounts && orderCounts[drink.id] >= 3}
+                        isPopular={orderCounts && orderCounts[drink.id] && orderCounts[drink.id] >= 3}
                     />
                 ))}
             </div>
@@ -260,10 +260,9 @@ const BoardHeader = ({ lastUpdated }) => (
     </header>
 );
 
-const PublicDisplay = ({ drinks, lastUpdated }) => {
-    const prevDrinks = usePrevious(drinks);
-    const prevDrinksMap = new Map(prevDrinks?.map(d => [d.id, d]));
-    const [orderCounts, setOrderCounts] = useState({});
+// --- Custom Hook for Grouping and Sorting Drinks ---
+const useGroupedDrinks = (drinks) => {
+    const categoryOrder = ['Alcool 4cl', 'Supérieur 4cl', 'Bière 50cl', 'Bière Bouteille', 'Vin 12cl', 'Shooter 3cl', 'Sans Alcool 33cl'];
 
     const groupedDrinks = drinks.reduce((acc, drink) => {
         const category = drink.category || 'Uncategorized';
@@ -271,9 +270,17 @@ const PublicDisplay = ({ drinks, lastUpdated }) => {
         acc[category].push(drink);
         return acc;
     }, {});
-    
-    const categoryOrder = ['Alcool 4cl', 'Supérieur 4cl', 'Bière 50cl', 'Bière Bouteille', 'Vin 12cl', 'Shooter 3cl', 'Sans Alcool 33cl'];
+
     const sortedCategories = Object.keys(groupedDrinks).sort((a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b));
+
+    return { groupedDrinks, sortedCategories };
+};
+
+const PublicDisplay = ({ drinks, lastUpdated }) => {
+    const prevDrinks = usePrevious(drinks);
+    const prevDrinksMap = new Map(prevDrinks?.map(d => [d.id, d]));
+    const [orderCounts, setOrderCounts] = useState({});
+    const { groupedDrinks, sortedCategories } = useGroupedDrinks(drinks);
 
     const fetchPopularDrinks = useCallback(async () => {
         try {
@@ -312,6 +319,7 @@ const PublicDisplay = ({ drinks, lastUpdated }) => {
 
 const AdminInterface = ({ drinks }) => {
     const [status, setStatus] = useState({ message: '', type: '' });
+    const { groupedDrinks, sortedCategories } = useGroupedDrinks(drinks);
 
     const placeOrder = async (productId, productName) => {
         setStatus({ message: `Ordering ${productName}...`, type: '' });
@@ -332,18 +340,6 @@ const AdminInterface = ({ drinks }) => {
         }
         setTimeout(() => setStatus({ message: '', type: '' }), 3000);
     };
-
-    const groupedDrinks = drinks.reduce((acc, drink) => {
-        const category = drink.category || 'Uncategorized';
-        if (!acc[category]) {
-            acc[category] = [];
-        }
-        acc[category].push(drink);
-        return acc;
-    }, {});
-
-    const categoryOrder = ['Alcool 4cl', 'Supérieur 4cl', 'Bière 50cl', 'Bière Bouteille', 'Vin 12cl', 'Shooter 3cl', 'Sans Alcool 33cl'];
-    const sortedCategories = Object.keys(groupedDrinks).sort((a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b));
 
     return (
         <div className="admin-panel">

@@ -45,13 +45,23 @@ SAMPLE_DRINKS = [
 ]
 
 def setup_database():
-    # Delete the old database file if it exists, to ensure a clean slate
-    if os.path.exists(DATABASE_FILE):
-        os.remove(DATABASE_FILE)
-        print(f"Removed old database file: {DATABASE_FILE}")
-
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
+
+    # Check if the tables already exist
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+    products_table_exists = cursor.fetchone() is not None
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='order_history'")
+    order_history_table_exists = cursor.fetchone() is not None
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='price_history'")
+    price_history_table_exists = cursor.fetchone() is not None
+
+    if products_table_exists and order_history_table_exists and price_history_table_exists:
+        print("Database tables already exist. Skipping creation.")
+        conn.close()
+        return
 
     cursor.execute('''
     CREATE TABLE products (
@@ -105,6 +115,3 @@ def setup_database():
     conn.commit()
     print(f"Database populated with {len(SAMPLE_DRINKS)} drinks.")
     conn.close()
-
-if __name__ == '__main__':
-    setup_database()

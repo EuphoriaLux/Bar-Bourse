@@ -4,8 +4,11 @@ from flask import Flask, render_template, jsonify, request, g
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from config import PRICE_DECREASE_AMOUNT, PRICE_DECREASE_INTERVAL_MINUTES, PRICE_INCREASE_ON_ORDER
+from database_setup import setup_database
 
 DATABASE = 'drinks.db'
+
+setup_database()
 
 app = Flask(__name__)
 
@@ -34,19 +37,26 @@ def decrease_prices():
         # This is the value that will be stored for the change
         change_value = -PRICE_DECREASE_AMOUNT
 
+        updates = []
+        history_entries = []
+
         for product in products:
             new_price = product['current_price'] + change_value
             if new_price < product['min_price']:
                 new_price = product['min_price']
             
-            # Update price and the last_change value
-            cursor.execute("UPDATE products SET current_price = ?, last_change = ? WHERE id = ?", 
-                           (round(new_price, 2), round(change_value, 2), product['id']))
-            
-            # Also add the new price to the history
-            cursor.execute("INSERT INTO price_history (product_id, price) VALUES (?, ?)", 
-                           (product['id'], round(new_price, 2)))
+            rounded_new_price = round(new_price, 2)
+            rounded_change_value = round(change_value, 2)
+
+            updates.append((rounded_new_price, rounded_change_value, product['id']))
+            history_entries.append((product['id'], rounded_new_price))
         
+        # Perform all product updates in a single executemany call
+        cursor.executemany("UPDATE products SET current_price = ?, last_change = ? WHERE id = ?", updates)
+        
+        # Perform all price history inserts in a single executemany call
+        cursor.executemany("INSERT INTO price_history (product_id, price) VALUES (?, ?)", history_entries)
+
         db.commit()
         print(f"Prices decreased. Change set to {change_value}.")
 
@@ -62,15 +72,15 @@ def get_prices():
 def record_order():
     data = request.get_json()
     product_id = data.get('product_id')
-    if not product_id:
+    if product_id is None:
         return jsonify({'error': 'Product ID is required'}), 400
 
     db = get_db()
     cursor = db.cursor()
     cursor.execute("SELECT current_price, max_price FROM products WHERE id = ?", (product_id,))
     product = cursor.fetchone()
-    if not product:
-        return jsonify({'error': 'Product not found'}), 404
+    if product is None:
+        return jsonify({'error': f'Product with ID {product_id} not found'}), 404
 
     new_price = product['current_price'] + PRICE_INCREASE_ON_ORDER
     if new_price > product['max_price']:

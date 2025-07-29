@@ -328,7 +328,11 @@ html,
 }
 
 .trend-arrow {
-  font-size: 0.8rem; /* Slightly larger arrow */
+  font-size: 0.8rem;
+}
+
+.trend-neutral {
+  color: var(--trend-neutral-color);
 }
 
 /* --- Popular Drinks Highlight --- */
@@ -344,6 +348,11 @@ html,
   transform: translateY(-50%);
   font-size: 1rem;
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.popular-drink .drink-name {
+  font-weight: bold;
+  text-shadow: 0 0 5px var(--price-up-glow);
 }
 
 /* --- Category-specific styling --- */
@@ -389,6 +398,8 @@ html,
 .info-view { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
 .main-nav { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
 .main-nav a { color: #fff; text-decoration: none; padding: 0.5rem 1.5rem; border: 1px solid #fff; border-radius: 5px; }
+.main-nav a:hover { background-color: #444; }
+.main-nav a.active { background-color: #555; }
 .admin-panel h2 { text-align: center; font-size: 1.5rem; margin-bottom: 2rem; }
 .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
 .order-btn { padding: 1rem; font-size: 1rem; cursor: pointer; border: 1px solid #888; border-radius: 5px; background-color: #222; color: #fff; }
